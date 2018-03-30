@@ -1,0 +1,182 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create S3 bucket with basic security policy and logging
+
+### 07 Sep 2017  EdH  Generalized
+### 20 Jul 2017  pete.gervais Fine Tuned bucket policy, outputs, logging
+##############################################################################
+Parameters:
+  bucketname:
+    Description: 'Bucket name for new S3 bucket'
+    Type: String
+    Default: a-valid-dns-name
+    AllowedPattern: '^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$'
+    ConstraintDescription: 'Name MUST be 3 to 63 lower case, numbers or dashes'
+
+##############################################################################
+Mappings:
+  my:      ### TODO: Change the settings in this map 
+    map:
+      ########################################################################
+      tagADGroup:                  'xxxx'                             ## M2 - used by IAM Policies
+      tagAPM:                      '00000'                            ## M1 - From ServiceNow - See https://wiki.cardinalhealth.net/AWS_Tags
+      tagApplication:              'xxxx'                             ## M1 - Do not use spaces!!!
+      tagApplicationGroup:         'xxxx'                             ## M1 - AWS Console IAM role name
+      tagAssignmentGroup:          'xxxx'                             ## M  - From ServiceNow APM record - See https://wiki.cardinalhealth.net/AWS_Tags
+      tagCostCenter:               '0000000000'                       ## M1 - bucket may be deleted if invalid !!!!
+      tagDataClass:                'InternalUseOnly'                  ## M1 - Public, InternalUseOnly, CAHPublic, CAHConfidential, CAHPrivate
+      tagEnvironment:              'Dev'                              ## M1 - POC, Dev, Stage, Prod, QA, PreProd, Training, Tek
+      tagRegulatory:               ''                                 ## M2 - Typically null - See https://wiki.cardinalhealth.net/AWS_Tags
+      tagRecoveryTier:             'Tier5'                            ## O  - (worst) Tier5, Tier4, Tier3, Tier2, Tier1      (best RTO/RPO = 24/4)
+      tagServiceClass:             'Class1'                           ## O  - (worst) Class1, Class2, Class3, Class4, Class5 (best Mission Critical)
+      tagTechnicalContact:         'xxxxx'         ## R  - their.name@cardinalhealth.com
+      tagWhoBuilt:                 'xxxxx'         ## R  - your.name@cardinalhealth.com
+  
+### ### ###
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label: {default: '!!! You MUST edit the template to set the map values !!!'}
+        Parameters: [ bucketname ]
+      - Label: {default: '!!! You MUST edit the template to set the map values !!!'}     
+      - Label: {default: '>>>>>>> Do not proceed unless you have done so. <<<<<<<'}     
+
+##############################################################################
+Conditions:
+  Regulated: !Not
+    - !Equals [{'Fn::FindInMap': ['my','map','tagRegulatory']}, '']
+##############################################################################
+### All S3 features available at time of creation are included.
+### Changes are commented out if not in use.
+### If you need a feature, remove the comment # and fill out the parts you need.
+Resources:
+  s3bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties: 
+     #AccessControl: <AuthenticatedRead | AwsExecRead | BucketOwnerRead | BucketOwnerFullControl | LogDeliveryWrite | Private | PublicRead | PublicReadWrite>
+      BucketName: !Ref bucketname
+     #CorsConfiguration: <Rules that define cross-origin resource sharing of objects in this bucket>
+     #  CORS Configuration
+     #LifecycleConfiguration: <Rules that define how Amazon S3 manages objects during their lifetime>
+     #  <Lifecycle Configuration>
+      LoggingConfiguration:
+        DestinationBucketName: !Sub 'aws-s3-logging-${AWS::Region}-${AWS::AccountId}'
+        LogFilePrefix: !Ref bucketname
+     #NotificationConfiguration: <onfiguration that defines how Amazon S3 handles bucket notifications>
+     #  Notification Configuration
+     #ReplicationConfiguration: <Configuration for replicating objects in an S3 bucket>
+     #  Replication Configuration
+     #VersioningConfiguration:
+     #  Versioning Configuration
+     #WebsiteConfiguration:
+     #  Website Configuration Type
+      Tags:
+        - {Key: Name,             Value: {Ref: bucketname}}
+        - {Key: ADGroup,          Value: {'Fn::FindInMap': ['my','map','tagADGroup']}}
+        - {Key: APM,              Value: {'Fn::FindInMap': ['my','map','tagAPM']}}
+        - {Key: Application,      Value: {'Fn::FindInMap': ['my','map','tagApplication']}}
+        - {Key: ApplicationGroup, Value: {'Fn::FindInMap': ['my','map','tagApplicationGroup']}}
+        - {Key: AssignmentGroup,  Value: {'Fn::FindInMap': ['my','map','tagAssignmentGroup']}}
+        - {Key: CostCenter,       Value: {'Fn::FindInMap': ['my','map','tagCostCenter']}}
+        - {Key: DataClass,        Value: {'Fn::FindInMap': ['my','map','tagDataClass']}}
+        - {Key: Environment,      Value: {'Fn::FindInMap': ['my','map','tagEnvironment']}}
+        - !If [Regulated, {Key: Regulatory, Value: {'Fn::FindInMap': ['my','map','tagRegulatory']}}, {Ref: 'AWS::NoValue'}]
+        - {Key: TechnicalContact, Value: {'Fn::FindInMap': ['my','map','tagTechnicalContact']}}      
+        - {Key: WhoBuilt,         Value: {'Fn::FindInMap': ['my','map','tagWhoBuilt']}}
+  ### ### ###
+  s3bucketpolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref s3bucket
+      PolicyDocument:
+        Id: !Sub 's3bucket-${AWS::Region}-${AWS::AccountId}'
+        Version: '2012-10-17'
+        Statement:
+          ### For POLICIES, see  http://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements.html
+          ### For ACTIONS,  see  http://docs.aws.amazon.com/IAM/latest/UserGuide/list_s3.html
+          #- Sid: Allow 10.0.0.0/8
+            #Effect: Allow
+            #Principal: '*'
+            #Action: 's3:*'
+            #Resource: 
+            #  - !Sub 'arn:aws:s3:::${s3bucket}/*'
+            #  - !Sub 'arn:aws:s3:::${s3bucket}'
+            #Condition: {IpAddress: {'aws:SourceIp': 10.0.0.0/8}}
+          #- Sid: Allow 199.230.203.0/24
+            #Effect: Allow
+            #Principal: '*'
+            #Action: 's3:*'
+            #Resource: 
+            #  - !Sub 'arn:aws:s3:::${s3bucket}/*'
+            #  - !Sub 'arn:aws:s3:::${s3bucket}'
+            #Condition: {IpAddress: {'aws:SourceIp': 199.230.203.0/24}}
+          #- Sid: Allow 198.89.160.0/24
+            #Effect: Allow
+            #Principal: '*'
+            #Action: 's3:*'
+            #Resource: 
+            #  - !Sub 'arn:aws:s3:::${s3bucket}/*'
+            #  - !Sub 'arn:aws:s3:::${s3bucket}'
+            #Condition: {IpAddress: {'aws:SourceIp': 198.89.160.0/24}}
+          - Sid: Deny IP address policy
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !Sub 'arn:aws:s3:::${s3bucket}/*'
+              - !Sub 'arn:aws:s3:::${s3bucket}'
+            Condition: {NotIpAddress: [198.89.160.0/24, 199.230.203.0/24]}
+          - Sid: Deny Insecure Connections (must use SSL)
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource: [!Sub 'arn:aws:s3:::${s3bucket}', !Sub 'arn:aws:s3:::${s3bucket}/*']
+            Condition: {Bool: {'aws:SecureTransport': 'false'}}
+          - Sid: Deny UnEncrypted Object Uploads, forces use of --sse AES256
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:PutObject'
+            Resource: [!Sub 'arn:aws:s3:::${s3bucket}/*']
+            Condition: {StringNotEquals: {'s3:x-amz-server-side-encryption': AES256}}
+          #- Sid: Allow bucket delete only from a CAH externally facing address (i.e. Console)
+            # Effect: Deny                        ### be careful with Deny rules!
+            # Principal: '*'
+            # Action: ['s3:DeleteBucket*']
+            # Resource: [!Sub 'arn:aws:s3:::${s3bucket}']
+            # Condition: {NotIpAddress: {'aws:SourceIp': ['161.244.0.0/16', '198.89.160.0/24', '199.230.203.0/24']}}
+          #- Sid: Restrict object CRUD to internal to the VPC only  (i.e. no console or outside access to objects)
+            # Effect: Deny                        ### be careful with Deny rules!
+            # Principal: '*'
+            # Action: [ 's3:PutObject*', 's3:DeleteObject*', 's3:RestoreObject*']
+            # Resource: [!Sub 'arn:aws:s3:::${s3bucket}/*']
+            # Condition: {StringNotEquals: {'aws:SourceVpc': !ImportValue corp-vpc-id}}
+          #- Sid: Allow specific IAM users/roles to have read/write access
+            #Effect: Allow
+            #Principal: 
+            #  AWS: 
+            #    #- 'arn:aws:iam::420689522072:role/some-operator-role'
+            #    #- 'arn:aws:iam::969667464637:role/some-operator'
+            #    #- 'arn:aws:iam::969667464637:role/some-machine-role'
+            #    - !Ref "AWS::NoValue"
+            #Action: ['s3:Get*', 's3:List*', 's3:PutObject*', 's3:DeleteObject*', 's3:RestoreObject*']
+            #Resource: [!Sub 'arn:aws:s3:::${s3bucket}', !Sub 'arn:aws:s3:::${s3bucket}/*']
+
+##############################################################################
+Outputs:
+  s3Bucketname:
+    Description: Name of S3 bucket created
+    Value: !Ref s3bucket
+  s3BucketARN:
+    Description: ARN of S3 bucket created
+    Value: !GetAtt s3bucket.Arn
+  ### ### ###
+  tagADGroup:          {Value: {'Fn::FindInMap': ['my','map','tagADGroup']}}
+  tagAPM:              {Value: {'Fn::FindInMap': ['my','map','tagAPM']}}
+  tagApplication:      {Value: {'Fn::FindInMap': ['my','map','tagApplication']}}
+  tagApplicationGroup: {Value: {'Fn::FindInMap': ['my','map','tagApplicationGroup']}}
+  tagAssignmentGroup:  {Value: {'Fn::FindInMap': ['my','map','tagAssignmentGroup']}}
+  tagCostCenter:       {Value: {'Fn::FindInMap': ['my','map','tagCostCenter']}}
+  tagDataClass:        {Value: {'Fn::FindInMap': ['my','map','tagDataClass']}}
+  tagEnvironment:      {Value: {'Fn::FindInMap': ['my','map','tagEnvironment']}}
+  tagRegulated:        {Value: !If [Regulated, {Key: Regulatory, Value: {'Fn::FindInMap': ['my','map','tagRegulatory']}}, 'Blank - Not Configured on Resource']}
+  tagTechnicalContact: {Value: {'Fn::FindInMap': ['my','map','tagTechnicalContact']}}
+  tagWhoBuilt:         {Value: {'Fn::FindInMap': ['my','map','tagWhoBuilt']}}

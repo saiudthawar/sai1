@@ -1,0 +1,43 @@
+{
+   "schemaVersion":"2.0",
+   "description":"Run a script",
+   "parameters":{
+      "commands":{
+         "type":"StringList",
+         "description":"(Required) Specify a shell script or a command to run.",
+         "minItems":1,
+         "displayType":"textarea",
+		 "default":[
+        	"$osversion = [environment]::OSVersion.Version",
+	    	"$WMF = $PSVersionTable.PSVersion",
+	    	"$path = "C:\\SYSADM\\SOFTWARE"",
+	    	"If(!(test-path $path))",
+	    	"{New-Item -ItemType Directory -Force -Path $path}",
+	    	"if ($osversion -like '*6.1*')",
+	    	"{
+    		"$version = "Server 2008 R2"",
+    		""$DotNet = "C:\\SYSADM\\SOFTWARE\\DotNet47.exe""",
+    		"$DotNetArgs = "/q /norestart"",
+    		"$WMI4 = "C:\\SYSADM\\SOFTWARE\\2008WMI4.msu"",
+    		"$WMI4Args = "/quiet"",
+    		"$BackupPSModulePath = $env:PSModulePath",
+	    	"Add-Type -assembly "system.io.compression.filesystem"",
+	    	"Invoke-WebRequest http://download.microsoft.com/download/D/D/3/DD35CC25-6E9C-484B-A746-C5BE0C923290/NDP47-KB3186497-x86-x64-AllOS-ENU.exe -OutFile "C:\\SYSADM\\SOFTWARE\\DotNet47.exe"",
+  	    	"Invoke-WebRequest https://download.microsoft.com/download/3/D/6/3D61D262-8549-4769-A660-230B67E15B25/Windows6.1-KB2819745-x64-MultiPkg.msu -OutFile "C:\\SYSADM\\SOFTWARE\\2008WMI4.msu"",
+   	    	"start-process $DotNet $DotNetArgs",
+    		"Start-Process $WMI4 $WMI4args",}",
+	    	"else", 
+		    {"$version = "Not Supported"}"
+	]
+      }
+   },
+   "mainSteps":[
+      {
+         "action":"aws:runPowerShellScript",
+         "name":"runPowerShellScript",
+         "inputs":{
+            "runCommand":"{{ commands }}"
+         }
+      }
+   ]
+}

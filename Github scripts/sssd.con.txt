@@ -1,0 +1,26 @@
+Path:
+
+If you want to add the group and sudo them:
+echo "%U-HAC-JEN-DEV  ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/cah-U-HAC-JEN-DEV
+
+
+
+If you wanna add the groups :
+
+cd /etc
+cd /sssd.conf
+
+
+
+
+cat /etc/sudoers
+  996  2017-10-06 10:15:57 id kumvin09
+  997  2017-10-06 10:16:17 cat /etc/opt/quest/vas/users.
+  998  2017-10-06 10:16:21 cat /etc/opt/quest/vas/users.allow
+  999  2017-10-06 10:16:49 vi /etc/opt/quest/vas/users.allow
+ 1000  2017-10-06 10:17:48 vastool user checkaccess kumvin09
+
+
+
+cd /etc/opt/quest/vas/ 
+vi users.allow and add the group in it
